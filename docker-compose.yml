@@ -6,9 +6,9 @@ services:
             context: .
             dockerfile: docker/builder.Dockerfile
             args:
-                http_proxy: http://proxy.ubisoft.org:3128
-                https_proxy: https://proxy.ubisoft.org:3128
-                no_proxy: localhost,127.0.0.1,ubisoft.org,ubisoft.onbe
+                http_proxy: ${http_proxy}
+                https_proxy: ${https_proxy}
+                no_proxy: ${no_proxy}
         image: addd-bld
     
     addd:
