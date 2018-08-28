@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+    builder:
+        build:
+            context: .
+            dockerfile: docker/builder.Dockerfile
+            args:
+                http_proxy: http://proxy.ubisoft.org:3128
+                https_proxy: https://proxy.ubisoft.org:3128
+                no_proxy: localhost,127.0.0.1,ubisoft.org,ubisoft.onbe
+        image: addd-bld
+    
+    addd:
+        build:
+            context: .
+            dockerfile: docker/addd.Dockerfile
+        image: addd
+        container_name: addd
+        restart: always
+        ports:
+        - "53:53/udp"
