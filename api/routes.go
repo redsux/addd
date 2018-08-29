@@ -10,17 +10,36 @@ import (
 func registerRoutes(srv *gin.Engine) {
 	records := srv.Group("/records")
 	{
-		records.GET("/", allRecords )
-		records.POST("/", newRecord )
-
-		record := records.Group("/:name/:type")
+		forAll(records)
+		record := records.Group("/:name")
 		{
 			record.Use( parseParams )
-			record.GET("/", getRecord )
-			record.PUT("/", updRecord )
-			record.DELETE("/", delRecord )
+			forOne(record)
+			wtype := record.Group("/:type")
+			{
+				forOne(wtype)
+			}
 		}
 	}
+}
+
+func forAll(router *gin.RouterGroup) {
+	router.GET("", allRecords )
+	router.GET("/", allRecords )
+	
+	router.POST("", newRecord )
+	router.POST("/", newRecord )
+}
+
+func forOne(router *gin.RouterGroup) {
+	router.GET("", getRecord )
+	router.GET("/", getRecord )
+	
+	router.PUT("", updRecord )
+	router.PUT("/", updRecord )
+
+	router.DELETE("", delRecord )
+	router.DELETE("/", delRecord )
 }
 
 func allRecords(c *gin.Context) {
@@ -116,6 +135,9 @@ func delRecord(c *gin.Context) {
 func parseParams(c *gin.Context) {
 	name := c.Param("name")
 	rtype := c.Param("type")
+	if rtype == "" {
+		rtype = "A"
+	}
 
 	rec, err := addd.GetRecord(name, rtype)
 	if err != nil {

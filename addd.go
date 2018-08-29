@@ -18,6 +18,7 @@ var (
     domain   *string
     tsig     *string
     port     *int
+    ips      *string
     // api flags
     listen   *string
     token    *string
@@ -33,6 +34,7 @@ func main() {
     domain = flag.String("domain", ".", "Parent domain to serve.")
     port = flag.Int("port", 53, "server port")
     tsig = flag.String("tsig", "", "use MD5 hmac tsig: keyname:base64")
+    ips  = flag.String("ips", "", "Add external ips for NS entry (split by ',')")
  
     // Parse API flags
     listen = flag.String("api", ":1632", "RestAPI listening string ([ip]:port)")
@@ -45,6 +47,12 @@ func main() {
     
     // Extract TSIG key:secret
     name, secret := ddns.ExtractTSIG(*tsig)
+
+    // Prepare IPs
+    extIps := make([]string, 0)
+    if *ips != "" {
+        extIps = strings.Split(*ips, ",")
+    }
 
     // Open db
     if err := addd.OpenDB(*db_path); err != nil {
@@ -59,7 +67,7 @@ func main() {
     }
  
     // Start DNS server
-    go ddns.Serve(".", name, secret, *port)
+    go ddns.Serve(*domain, name, secret, *port, extIps)
  
     // Start API server
     go api.Serve(*listen, *token, strings.EqualFold(*loglevel, "DEBUG"))

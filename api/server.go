@@ -19,7 +19,7 @@ func init() {
 	gin.SetMode(gin.ReleaseMode)
 
 	engine = gin.New()
-
+	engine.RedirectTrailingSlash = false
 	engine.Use( logger() )
 	engine.Use( gin.Recovery() )
 	engine.Use( cors.Default() )

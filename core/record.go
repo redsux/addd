@@ -3,7 +3,6 @@ package addd
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"github.com/miekg/dns"
 )
@@ -24,25 +23,6 @@ func DefaultRecord() *Record {
 	}
 }
 
-func NewRecord(entry string) ( rec *Record, err error) {
-	parsed := strings.Fields(entry)
-	if parsed[3] == "A" || parsed[3] == "AAAA" {
-		ttl, err := strconv.Atoi(parsed[1])
-		if err == nil {
-			rec = &Record{
-				Name: parsed[0],
-				Address: parsed[4],
-				Type: parsed[3],
-				Class: parsed[2],
-				Ttl: ttl,
-			}
-		}
-	} else {
-		err = fmt.Errorf("DNS type %v not supported.", parsed[3])
-	}
-	return
-}
-
 func NewRecordFromJson(jso string) ( rec *Record, err error) {
 	rec = DefaultRecord()
 	err = json.Unmarshal([]byte(jso), rec)
@@ -51,7 +31,7 @@ func NewRecordFromJson(jso string) ( rec *Record, err error) {
 
 func NewRecordFromDns(rr dns.RR) ( rec *Record, err error) {
 	var (
-		rname string = rr.Header().Name
+		rname string = strings.ToLower(rr.Header().Name)
 		rclass string = dns.Class(rr.Header().Class).String()
 		rtype string = dns.Type(rr.Header().Rrtype).String()
 		rttl int = int(rr.Header().Ttl)
