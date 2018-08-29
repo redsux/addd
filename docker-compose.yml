@@ -1,22 +1,18 @@
 version: '3'
 
 services:
-    builder:
+    addd:
         build:
             context: .
-            dockerfile: docker/builder.Dockerfile
             args:
                 http_proxy: ${http_proxy}
                 https_proxy: ${https_proxy}
                 no_proxy: ${no_proxy}
-        image: addd-bld
-    
-    addd:
-        build:
-            context: .
-            dockerfile: docker/addd.Dockerfile
         image: addd
         container_name: addd
         restart: always
         ports:
         - "53:53/udp"
+        - "1632:1632/tcp"
+        #volumes:
+        #- "/path/to/db/file.db:/addd.db"
