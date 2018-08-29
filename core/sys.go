@@ -36,14 +36,8 @@ func DeletePid() {
 
 func WaitSig() {
 	sig := make(chan os.Signal)
-    signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-endless:
-    for {
-        select {
-		case s :=  <-sig:
-			DeletePid()
-            Log.WarningF("Signal (%d) received, stopping", s)
-            break endless
-        }
-    }
+    signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT)
+	s := <- sig
+	DeletePid()
+	Log.WarningF("Signal (%d) received, stopping", s)
 }
