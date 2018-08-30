@@ -14,7 +14,7 @@ import (
 var (
     domain string = "."
     ips    []string
-    serial int = 1 + rand.Intn(4294967294)
+    serial int = 1 + rand.Intn(4294967294) // random DNS SOA serial
 )
 
 func init() {
@@ -29,6 +29,17 @@ func getSoa() *dns.SOA {
     strSoa := fmt.Sprintf("$ORIGIN %s\n@ SOA ns.%s admin. %d 1800 900 0604800 604800", domain, domain, serial)
     soa, _ := dns.NewRR(strSoa)
     return soa.(*dns.SOA)
+}
+
+func getNs() (ns []dns.RR) {
+    ns = make([]dns.RR, 0)
+    for i := range ips {
+        strRr := fmt.Sprintf("%s %v IN A %s", "ns." + domain, 86400, ips[i])
+        if rr, e := dns.NewRR(strRr); e == nil {
+            ns = append(ns, rr)
+        }
+    }
+    return
 }
 
 func updateRecord(r dns.RR, q *dns.Question) {
@@ -54,18 +65,16 @@ func parseQuery(m *dns.Msg) {
 
         switch q.Qtype {
         case dns.TypeSOA:
-            m.Answer = append(m.Answer, getSoa())
+            if qname == domain {
+                m.Answer = append(m.Answer, getSoa())
+                m.Extra = append(m.Extra, getNs()...)
+            }
         case dns.TypeANY:
             qtype = "A"
             fallthrough
         case dns.TypeA:
             if qname == "ns." + domain {
-                for i := range ips {
-                    strRr := fmt.Sprintf("%s %v IN A %s", qname, 86400, ips[i])
-                    if rr, e := dns.NewRR(strRr); e == nil {
-                        m.Answer = append(m.Answer, rr)
-                    }
-                }
+                m.Answer = append(m.Answer, getNs()...)
                 return
             }
             fallthrough
@@ -89,8 +98,9 @@ func handleDnsRequest(w dns.ResponseWriter, r *dns.Msg) {
     m.Authoritative = true
     m.Compress = false
     m.Answer = make([]dns.RR, 0)
+    m.Extra = make([]dns.RR, 0)
     m.Ns = []dns.RR{getSoa()}
- 
+
     switch r.Opcode {
     case dns.OpcodeQuery:
         parseQuery(m)
@@ -104,14 +114,15 @@ func handleDnsRequest(w dns.ResponseWriter, r *dns.Msg) {
         m.SetRcode(r, dns.RcodeNotImplemented)
     }
 
-    if m.Rcode != dns.RcodeNotImplemented && len(m.Answer) == 0 && len(m.Ns) == 0 {
+    if m.Rcode != dns.RcodeNotImplemented && len(m.Answer) == 0 {
         m.SetRcode(r, dns.RcodeNameError)
     }
 
     if r.IsTsig() != nil {
         if w.TsigStatus() == nil {
-            m.SetTsig(r.Extra[len(r.Extra)-1].(*dns.TSIG).Hdr.Name,
-                dns.HmacMD5, 300, time.Now().Unix())
+            if rtsig, ok := r.Extra[len(r.Extra)-1].(*dns.TSIG); ok {
+                m.SetTsig(rtsig.Hdr.Name, dns.HmacMD5, 300, time.Now().Unix())
+            }
         } else {
             addd.Log.WarningF("TSIG Status : %v", w.TsigStatus().Error())
         }
