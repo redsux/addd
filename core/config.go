@@ -3,10 +3,12 @@ package addd
 import (
 	"os"
 	"strings"
+
 	"github.com/apsdehal/go-logger"
 )
 
 var (
+	// Log is our logger
 	Log *logger.Logger
 )
 
@@ -19,6 +21,7 @@ func init() {
 	Log.SetFormat("%{time:2006-01-02 15:04:05} %{level} ▶ %{message}")
 }
 
+// SetLoglevel change the log level
 func SetLoglevel(level string) {
 	if strings.EqualFold(level, "DEBUG") {
 		Log.SetLogLevel(logger.DebugLevel)

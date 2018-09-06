@@ -1,173 +1,173 @@
 package ddns
 
 import (
-    "fmt"
-    "math/rand"
-    "strconv"
-    "strings"
-    "time"
+	"fmt"
+	"math/rand"
+	"strconv"
+	"strings"
+	"time"
 
-    "github.com/redsux/addd/core"
-    "github.com/miekg/dns"
+	"github.com/miekg/dns"
+	"github.com/redsux/addd/core"
 )
 
 var (
-    domain string = "."
-    ips    []string
-    serial int = 1 + rand.Intn(4294967294) // random DNS SOA serial
+	domain = "."
+	ips    []string
+	serial = 1 + rand.Intn(4294967294) // random DNS SOA serial
 )
 
 func init() {
-    if ip, e := addd.ExternalIP(); e == nil {
-        ips = []string{ip}
-    } else {
-        ips = make([]string, 0)
-    }
+	if ip, e := addd.ExternalIP(); e == nil {
+		ips = []string{ip}
+	} else {
+		ips = make([]string, 0)
+	}
 }
 
 func noDotDomain() string {
-    return strings.TrimLeft(domain, ".")
+	return strings.TrimLeft(domain, ".")
 }
 
 func getSoa() *dns.SOA {
-    strSoa := fmt.Sprintf("$ORIGIN %s\n@ SOA ns.%s admin. %d 1800 900 0604800 604800", domain, noDotDomain(), serial)
-    soa, err := dns.NewRR(strSoa)
-    if err != nil {
-        panic(err)
-    }
-    return soa.(*dns.SOA)
+	strSoa := fmt.Sprintf("$ORIGIN %s\n@ SOA ns.%s admin. %d 1800 900 0604800 604800", domain, noDotDomain(), serial)
+	soa, err := dns.NewRR(strSoa)
+	if err != nil {
+		panic(err)
+	}
+	return soa.(*dns.SOA)
 }
 
 func getNs() (ns []dns.RR) {
-    ns = make([]dns.RR, 0)
-    for i := range ips {
-        strRr := fmt.Sprintf("%s %v IN A %s", "ns." + noDotDomain(), 86400, ips[i])
-        if rr, e := dns.NewRR(strRr); e == nil {
-            ns = append(ns, rr)
-        }
-    }
-    return
+	ns = make([]dns.RR, 0)
+	for i := range ips {
+		strRr := fmt.Sprintf("%s %v IN A %s", "ns."+noDotDomain(), 86400, ips[i])
+		if rr, e := dns.NewRR(strRr); e == nil {
+			ns = append(ns, rr)
+		}
+	}
+	return
 }
 
 func updateRecord(r dns.RR, q *dns.Question) {
-    if rec, err := addd.NewRecordFromDns(r); err == nil {
-        if rec.Name != "ns." + domain {
-            addd.Log.NoticeF("[DNS] Update %v, %v", rec.Name, rec.Type)
-            if _, err := addd.GetRecord(rec.Name, rec.Type); err == nil {
-                addd.DeleteRecord(rec)
-            }
-            if _, err := rec.DnsRR(); err == nil {
-                addd.StoreRecord(rec)
-            }
-        }
-    }
+	if rec, err := addd.NewRecordFromDNS(r); err == nil {
+		if rec.Name != "ns."+domain {
+			addd.Log.NoticeF("[DNS] Update %v, %v", rec.Name, rec.Type)
+			if _, err := addd.GetRecord(rec.Name, rec.Type); err == nil {
+				addd.DeleteRecord(rec)
+			}
+			if _, err := rec.DNSRR(); err == nil {
+				addd.StoreRecord(rec)
+			}
+		}
+	}
 }
- 
+
 func parseQuery(m *dns.Msg) {
-    for _, q := range m.Question {
-        qname := strings.ToLower(q.Name)
-        qtype := dns.Type(q.Qtype).String()
+	for _, q := range m.Question {
+		qname := strings.ToLower(q.Name)
+		qtype := dns.Type(q.Qtype).String()
 
-        addd.Log.NoticeF("[DNS] Query %v, %v", qname, qtype)
+		addd.Log.NoticeF("[DNS] Query %v, %v", qname, qtype)
 
-        switch q.Qtype {
-        case dns.TypeSOA:
-            if qname == domain {
-                m.Answer = append(m.Answer, getSoa())
-                m.Extra = append(m.Extra, getNs()...)
-            }
-        case dns.TypeANY:
-            qtype = "A"
-            fallthrough
-        case dns.TypeA:
-            if qname == "ns." + domain {
-                m.Answer = append(m.Answer, getNs()...)
-                return
-            }
-            fallthrough
-        case dns.TypeAAAA:
-            fillAnswer(qname, qtype, &m.Answer)
-        }
-    }
+		switch q.Qtype {
+		case dns.TypeSOA:
+			if qname == domain {
+				m.Answer = append(m.Answer, getSoa())
+				m.Extra = append(m.Extra, getNs()...)
+			}
+		case dns.TypeANY:
+			qtype = "A"
+			fallthrough
+		case dns.TypeA:
+			if qname == "ns."+domain {
+				m.Answer = append(m.Answer, getNs()...)
+				return
+			}
+			fallthrough
+		case dns.TypeAAAA:
+			fillAnswer(qname, qtype, &m.Answer)
+		}
+	}
 }
 
 func fillAnswer(qname, qtype string, ans *[]dns.RR) {
-    if read_rr, e := addd.GetRecord(qname, qtype); e == nil {
-        if rr, e := read_rr.DnsRR(); e == nil && rr.Header().Name == qname {
-            *ans = append(*ans, rr)
-        }
-    }
+	if readRR, e := addd.GetRecord(qname, qtype); e == nil {
+		if rr, e := readRR.DNSRR(); e == nil && rr.Header().Name == qname {
+			*ans = append(*ans, rr)
+		}
+	}
 }
- 
-func handleDnsRequest(w dns.ResponseWriter, r *dns.Msg) {
-    m := new(dns.Msg)
-    m.SetReply(r)
-    m.Authoritative = true
-    m.Compress = false
-    m.Answer = make([]dns.RR, 0)
-    m.Extra = make([]dns.RR, 0)
-    m.Ns = []dns.RR{getSoa()}
 
-    switch r.Opcode {
-    case dns.OpcodeQuery:
-        parseQuery(m)
-    case dns.OpcodeUpdate:
-        for _, question := range r.Question {
-            for _, rr := range r.Ns {
-                updateRecord(rr, &question)
-            }
-        }
-    default:
-        m.SetRcode(r, dns.RcodeNotImplemented)
-    }
+func handleDNSRequest(w dns.ResponseWriter, r *dns.Msg) {
+	m := new(dns.Msg)
+	m.SetReply(r)
+	m.Authoritative = true
+	m.Compress = false
+	m.Answer = make([]dns.RR, 0)
+	m.Extra = make([]dns.RR, 0)
+	m.Ns = []dns.RR{getSoa()}
 
-    if m.Rcode != dns.RcodeNotImplemented && len(m.Answer) == 0 {
-        m.SetRcode(r, dns.RcodeNameError)
-    }
+	switch r.Opcode {
+	case dns.OpcodeQuery:
+		parseQuery(m)
+	case dns.OpcodeUpdate:
+		for _, question := range r.Question {
+			for _, rr := range r.Ns {
+				updateRecord(rr, &question)
+			}
+		}
+	default:
+		m.SetRcode(r, dns.RcodeNotImplemented)
+	}
 
-    if r.IsTsig() != nil {
-        if w.TsigStatus() == nil {
-            if rtsig, ok := r.Extra[len(r.Extra)-1].(*dns.TSIG); ok {
-                m.SetTsig(rtsig.Hdr.Name, dns.HmacMD5, 300, time.Now().Unix())
-            }
-        } else {
-            addd.Log.WarningF("TSIG Status : %v", w.TsigStatus().Error())
-        }
-    }
- 
-    w.WriteMsg(m)
+	if m.Rcode != dns.RcodeNotImplemented && len(m.Answer) == 0 {
+		m.SetRcode(r, dns.RcodeNameError)
+	}
+
+	if r.IsTsig() != nil {
+		if w.TsigStatus() == nil {
+			if rtsig, ok := r.Extra[len(r.Extra)-1].(*dns.TSIG); ok {
+				m.SetTsig(rtsig.Hdr.Name, dns.HmacMD5, 300, time.Now().Unix())
+			}
+		} else {
+			addd.Log.WarningF("TSIG Status : %v", w.TsigStatus().Error())
+		}
+	}
+
+	w.WriteMsg(m)
 }
- 
+
 func Serve(root, name, secret string, port int, extips string) {
 	if !strings.HasSuffix(root, ".") {
 		root = root + "."
-    }
-    if strings.HasPrefix(root, ".") && root != "." {
-        root = strings.TrimLeft(root, ".")
-    }
-    
-    root = strings.ToLower(root)
+	}
+	if strings.HasPrefix(root, ".") && root != "." {
+		root = strings.TrimLeft(root, ".")
+	}
+
+	root = strings.ToLower(root)
 
 	if _, ok := dns.IsDomainName(root); ok {
-        domain = root
-        
-        dns_ips := strings.Split(extips, ",")
-        if len(dns_ips) > 0 {
-            ips = append(ips, dns_ips...)
-        }
-        
-        addd.Log.Debugf("Ips : %v", ips)
+		domain = root
 
-		dns.HandleFunc(root, handleDnsRequest)
+		dnsIps := strings.Split(extips, ",")
+		if len(dnsIps) > 0 {
+			ips = append(ips, dnsIps...)
+		}
 
-		server := &dns.Server{Addr: ":" + strconv.Itoa(port), Net: "udp"} 
+		addd.Log.Debugf("Ips : %v", ips)
+
+		dns.HandleFunc(root, handleDNSRequest)
+
+		server := &dns.Server{Addr: ":" + strconv.Itoa(port), Net: "udp"}
 		if name != "" && secret != "" {
 			server.TsigSecret = map[string]string{name: secret}
 		}
 
 		err := server.ListenAndServe()
 		defer server.Shutdown()
-		
+
 		if err != nil {
 			addd.Log.Error("Failed to setup the udp server.")
 			panic(err.Error())

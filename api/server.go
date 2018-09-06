@@ -3,16 +3,16 @@ package api
 import (
 	"net/http"
 	"time"
-	
-    "github.com/gin-gonic/gin"
+
 	"github.com/gin-contrib/cors"
-	
+	"github.com/gin-gonic/gin"
+
 	"github.com/redsux/addd/core"
 )
 
 var (
 	engine *gin.Engine
-	secret string = "secret"
+	secret = "secret"
 )
 
 func init() {
@@ -20,10 +20,10 @@ func init() {
 
 	engine = gin.New()
 	engine.RedirectTrailingSlash = false
-	engine.Use( logger() )
-	engine.Use( gin.Recovery() )
-	engine.Use( cors.Default() )
-	engine.Use( authRequired() )
+	engine.Use(logger())
+	engine.Use(gin.Recovery())
+	engine.Use(cors.Default())
+	engine.Use(authRequired())
 }
 
 func Serve(listen, auth string, debug ...bool) {
@@ -33,12 +33,12 @@ func Serve(listen, auth string, debug ...bool) {
 		}
 	}
 	registerRoutes(engine)
-	
-	if err := engine.Run( listen ); err != nil {
+
+	if err := engine.Run(listen); err != nil {
 		addd.Log.Error("Failed to run the rest api server.")
 		panic(err.Error())
 	}
-	
+
 }
 
 func authRequired() gin.HandlerFunc {

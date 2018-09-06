@@ -1,33 +1,32 @@
 package addd
 
 import (
+	"errors"
 	"fmt"
-	"time"
 
-	"github.com/boltdb/bolt"
 	"github.com/redsux/habolt"
 )
 
 var (
-	bdb *habolt.Store
+	bdb habolt.Store
 )
 
-func OpenDB(db_path string) (err error) {
-	// Open db
-	bdb, err = habolt.NewStore(&habolt.Options{
-		Path: db_path,
-		BoltOptions: &bolt.Options{
-			Timeout: 10 * time.Second,
-		},
-	})
-	return
+// NewDB initialize our key/value store
+func NewDB(db habolt.Store) error {
+	if db == nil {
+		return errors.New("NewDB nil argument not allowed")
+	}
+	bdb = db
+	return nil
 }
 
-func CloseDB() {
+// CloseDB ends the DB usage
+func CloseDB() error {
 	checkBdp()
-	bdb.Close()
+	return bdb.Close()
 }
 
+// ListRecords returns all Record stored in our DB
 func ListRecords() (rec []Record, err error) {
 	checkBdp()
 	rec = make([]Record, 0)
@@ -35,31 +34,43 @@ func ListRecords() (rec []Record, err error) {
 	return
 }
 
+// GetRecord retrieves the record
 func GetRecord(domain string, rtype string) (rr *Record, err error) {
 	checkBdp()
+	key, err := getKey(domain, rtype)
+	if err != nil {
+		return
+	}
 	rr = DefaultRecord()
-    key, _ := getKey(domain, rtype)
 	err = bdb.Get(key, rr)
-    return 
+	return
 }
 
+// StoreRecord stores the record in our DB
 func StoreRecord(rr *Record) (err error) {
 	checkBdp()
-	key, _ := getKey(rr.Name, rr.Type)
+	key, err := getKey(rr.Name, rr.Type)
+	if err != nil {
+		return
+	}
 	err = bdb.Set(key, rr)
-    return
+	return
 }
 
+// DeleteRecord deletes the record in our DB
 func DeleteRecord(rr *Record) (err error) {
 	checkBdp()
-    key, _ := getKey(rr.Name, rr.Type)
-    err = bdb.Delete(key)
-    return
+	key, err := getKey(rr.Name, rr.Type)
+	if err != nil {
+		return
+	}
+	err = bdb.Delete(key)
+	return
 }
 
 func checkBdp() {
 	if bdb == nil {
-		err := fmt.Errorf("Internal database not define.")
+		err := fmt.Errorf("Internal database not define")
 		panic(err)
 	}
 }

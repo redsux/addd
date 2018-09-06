@@ -3,8 +3,9 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"github.com/redsux/addd/core"
+
 	"github.com/gin-gonic/gin"
+	"github.com/redsux/addd/core"
 )
 
 func registerRoutes(srv *gin.Engine) {
@@ -13,7 +14,7 @@ func registerRoutes(srv *gin.Engine) {
 		forAll(records)
 		record := records.Group("/:name")
 		{
-			record.Use( parseParams )
+			record.Use(parseParams)
 			forOne(record)
 			wtype := record.Group("/:type")
 			{
@@ -24,22 +25,22 @@ func registerRoutes(srv *gin.Engine) {
 }
 
 func forAll(router *gin.RouterGroup) {
-	router.GET("", allRecords )
-	router.GET("/", allRecords )
-	
-	router.POST("", newRecord )
-	router.POST("/", newRecord )
+	router.GET("", allRecords)
+	router.GET("/", allRecords)
+
+	router.POST("", newRecord)
+	router.POST("/", newRecord)
 }
 
 func forOne(router *gin.RouterGroup) {
-	router.GET("", getRecord )
-	router.GET("/", getRecord )
-	
-	router.PUT("", updRecord )
-	router.PUT("/", updRecord )
+	router.GET("", getRecord)
+	router.GET("/", getRecord)
 
-	router.DELETE("", delRecord )
-	router.DELETE("/", delRecord )
+	router.PUT("", updRecord)
+	router.PUT("/", updRecord)
+
+	router.DELETE("", delRecord)
+	router.DELETE("/", delRecord)
 }
 
 func allRecords(c *gin.Context) {
@@ -62,7 +63,7 @@ func newRecord(c *gin.Context) {
 	if err = c.BindJSON(&newRec); err != nil {
 		return
 	}
-	
+
 	// Not existing
 	if _, err = addd.GetRecord(newRec.Name, newRec.Type); err != nil {
 		if err = addd.StoreRecord(newRec); err == nil {
@@ -73,7 +74,7 @@ func newRecord(c *gin.Context) {
 			return
 		}
 	} else {
-		err = fmt.Errorf("Record already exist.")
+		err = fmt.Errorf("Record already exist")
 	}
 	c.AbortWithError(http.StatusInternalServerError, err)
 	addd.Log.DebugF("[API] %v", err.Error())
@@ -88,23 +89,23 @@ func updRecord(c *gin.Context) {
 	var err error
 	rec := c.MustGet("record").(*addd.Record)
 	newRec := &addd.Record{
-		Type: rec.Type,
+		Type:  rec.Type,
 		Class: rec.Class,
-		Ttl: rec.Ttl,
+		TTL:   rec.TTL,
 	}
 
 	// Bind body
 	if err = c.BindJSON(newRec); err != nil {
 		return
 	}
-	
+
 	if rec.Name == newRec.Name && rec.Type == newRec.Type {
 		// Delete existing
 		if err = addd.DeleteRecord(rec); err == nil {
 			// Save new
 			if err = addd.StoreRecord(newRec); err == nil {
 				c.JSON(http.StatusOK, gin.H{
-					"status": "updated",
+					"status":     "updated",
 					"old-record": rec,
 					"new-record": newRec,
 				})
@@ -112,7 +113,7 @@ func updRecord(c *gin.Context) {
 			}
 		}
 	} else {
-		err = fmt.Errorf("Body doesn't suit URI path.")
+		err = fmt.Errorf("Body doesn't suit URI path")
 	}
 	c.AbortWithError(http.StatusInternalServerError, err)
 	addd.Log.DebugF("[API] %v", err.Error())
@@ -125,7 +126,7 @@ func delRecord(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "deleted",
 		"record": rec,
@@ -145,7 +146,7 @@ func parseParams(c *gin.Context) {
 		addd.Log.DebugF("[API] %v", err.Error())
 		return
 	}
-	
+
 	c.Set("record", rec)
 	c.Next()
 }
