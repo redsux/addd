@@ -25,16 +25,23 @@ func init() {
     }
 }
 
+func noDotDomain() string {
+    return strings.TrimLeft(domain, ".")
+}
+
 func getSoa() *dns.SOA {
-    strSoa := fmt.Sprintf("$ORIGIN %s\n@ SOA ns.%s admin. %d 1800 900 0604800 604800", domain, domain, serial)
-    soa, _ := dns.NewRR(strSoa)
+    strSoa := fmt.Sprintf("$ORIGIN %s\n@ SOA ns.%s admin. %d 1800 900 0604800 604800", domain, noDotDomain(), serial)
+    soa, err := dns.NewRR(strSoa)
+    if err != nil {
+        panic(err)
+    }
     return soa.(*dns.SOA)
 }
 
 func getNs() (ns []dns.RR) {
     ns = make([]dns.RR, 0)
     for i := range ips {
-        strRr := fmt.Sprintf("%s %v IN A %s", "ns." + domain, 86400, ips[i])
+        strRr := fmt.Sprintf("%s %v IN A %s", "ns." + noDotDomain(), 86400, ips[i])
         if rr, e := dns.NewRR(strRr); e == nil {
             ns = append(ns, rr)
         }
@@ -131,17 +138,24 @@ func handleDnsRequest(w dns.ResponseWriter, r *dns.Msg) {
     w.WriteMsg(m)
 }
  
-func Serve(root, name, secret string, port int, extips []string) {
+func Serve(root, name, secret string, port int, extips string) {
 	if !strings.HasSuffix(root, ".") {
 		root = root + "."
     }
+    if strings.HasPrefix(root, ".") && root != "." {
+        root = strings.TrimLeft(root, ".")
+    }
+    
     root = strings.ToLower(root)
 
 	if _, ok := dns.IsDomainName(root); ok {
         domain = root
-        if len(extips) > 0 {
-            ips = append(ips, extips...)
+        
+        dns_ips := strings.Split(extips, ",")
+        if len(dns_ips) > 0 {
+            ips = append(ips, dns_ips...)
         }
+        
         addd.Log.Debugf("Ips : %v", ips)
 
 		dns.HandleFunc(root, handleDnsRequest)

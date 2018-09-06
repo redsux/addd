@@ -11,66 +11,70 @@ import (
  
 var (
     // common flags
-    loglevel *string
-    db_path  *string
-    pid_file *string
+    log_level  string
+    pid_file   string
     // dns flags
-    domain   *string
-    tsig     *string
-    port     *int
-    ips      *string
+    dns_domain string
+    dns_tsig   string
+    dns_port   int
+    dns_ips    string
     // api flags
-    listen   *string
-    token    *string
+    api_listen string
+    api_token  string
+    // db flags
+    db_path    string
+    db_listen  string
+    db_join    string
 )
- 
-func main() { 
+
+func init() {
     // Parse common flags
-    loglevel = flag.String("level", "info", "Loglevel (debug>critical>warning>info)")
-    db_path = flag.String("db_path", "./addd.db", "location where db will be stored")
-    pid_file = flag.String("pid", "./addd.pid", "pid file location")
+    flag.StringVar(&log_level, "level", "info", "Loglevel (debug>critical>warning>info)")
+    flag.StringVar(&pid_file, "pid", "./addd.pid", "pid file location")
 
     // Parse DNS flags
-    domain = flag.String("domain", ".", "Parent domain to serve.")
-    port = flag.Int("port", 53, "server port")
-    tsig = flag.String("tsig", "", "use MD5 hmac tsig: keyname:base64")
-    ips  = flag.String("ips", "", "Add external ips for NS entry (split by ',')")
+    flag.StringVar(&dns_domain, "domain", ".", "Parent domain to serve.")
+    flag.IntVar(&dns_port, "port", 53, "server port")
+    flag.StringVar(&dns_tsig, "tsig", "", "use MD5 hmac tsig: keyname:base64")
+    flag.StringVar(&dns_ips, "ips", "", "Add external ips for NS entry (split by ',')")
  
     // Parse API flags
-    listen = flag.String("api", ":1632", "RestAPI listening string ([ip]:port)")
-    token  = flag.String("token", "secret", "RestAPI X-AUTH-TOKEN base64 value")
+    flag.StringVar(&api_listen, "api", ":1632", "RestAPI listening string ([ip]:port)")
+    flag.StringVar(&api_token, "token", "secret", "RestAPI X-AUTH-TOKEN base64 value")
 
+    // Parse DB flags
+    flag.StringVar(&db_path, "db_path", "./addd.db", "location where db will be stored")
+    //flag.StringVar(&db_listen, "db_port", ":10001", "")
+    //flag.StringVar(&db_join, "db_join", "./addd.db", "")
+}
+
+func main() { 
+    // Parse arguments
     flag.Parse()
  
     // Define LogLevel
-    addd.SetLoglevel(*loglevel)
+    addd.SetLoglevel(log_level)
     
     // Extract TSIG key:secret
-    name, secret := ddns.ExtractTSIG(*tsig)
-
-    // Prepare IPs
-    extIps := make([]string, 0)
-    if *ips != "" {
-        extIps = strings.Split(*ips, ",")
-    }
+    dns_name, dns_secret := ddns.ExtractTSIG(dns_tsig)
 
     // Open db
-    if err := addd.OpenDB(*db_path); err != nil {
+    if err := addd.OpenDB(db_path); err != nil {
         addd.Log.Critical("Couldn't create internal DB file.")
         panic(err.Error())
     }
     defer addd.CloseDB()
  
-    if err := addd.StorePid(*pid_file); err != nil {
+    if err := addd.StorePid(pid_file); err != nil {
         addd.Log.Critical("Couldn't create pid file")
 		panic(err.Error())
     }
- 
+
     // Start DNS server
-    go ddns.Serve(*domain, name, secret, *port, extIps)
+    go ddns.Serve(dns_domain, dns_name, dns_secret, dns_port, dns_ips)
  
     // Start API server
-    go api.Serve(*listen, *token, strings.EqualFold(*loglevel, "DEBUG"))
+    go api.Serve(api_listen, api_token, strings.EqualFold(log_level, "DEBUG"))
 
     // Wait SIGINT/SIGTERM
     addd.WaitSig()

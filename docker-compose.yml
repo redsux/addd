@@ -14,5 +14,6 @@ services:
         ports:
         - "53:53/udp"
         - "1632:1632/tcp"
+        command: -level debug
         #volumes:
         #- "/path/to/db/file.db:/addd.db"
