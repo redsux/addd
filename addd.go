@@ -15,41 +15,39 @@ import (
 
 var (
 	// common flags
-	log_level string
-	pid_file  string
+	logLevel string
+	pidFile  string
 	// dns flags
-	dns_domain string
-	dns_tsig   string
-	dns_port   int
-	dns_ips    string
+	dnsDomain string
+	dnsTsig   string
+	dnsPort   int
 	// api flags
-	api_listen string
-	api_token  string
+	apiListen string
+	apiToken  string
 	// db flags
-	db_path   string
-	db_listen string
-	db_join   string
+	dbPath   string
+	dbListen string
+	dbJoin   string
 )
 
 func init() {
 	// Parse common flags
-	flag.StringVar(&log_level, "level", "info", "Loglevel (debug>critical>warning>info)")
-	flag.StringVar(&pid_file, "pid", "./addd.pid", "pid file location")
+	flag.StringVar(&logLevel, "level", "info", "Loglevel (debug>critical>warning>info)")
+	flag.StringVar(&pidFile, "pid", "./addd.pid", "pid file location")
 
 	// Parse DNS flags
-	flag.StringVar(&dns_domain, "domain", ".", "Parent domain to serve.")
-	flag.IntVar(&dns_port, "port", 53, "server port")
-	flag.StringVar(&dns_tsig, "tsig", "", "use MD5 hmac tsig: keyname:base64")
-	flag.StringVar(&dns_ips, "ips", "", "Add external ips for NS entry (split by ',')")
+	flag.StringVar(&dnsDomain, "domain", ".", "Parent domain to serve.")
+	flag.IntVar(&dnsPort, "port", 53, "server port")
+	flag.StringVar(&dnsTsig, "tsig", "", "use MD5 hmac tsig: keyname:base64")
 
 	// Parse API flags
-	flag.StringVar(&api_listen, "api", ":1632", "RestAPI listening string ([ip]:port)")
-	flag.StringVar(&api_token, "token", "secret", "RestAPI X-AUTH-TOKEN base64 value")
+	flag.StringVar(&apiListen, "api", ":1632", "RestAPI listening string ([ip]:port)")
+	flag.StringVar(&apiToken, "token", "secret", "RestAPI X-AUTH-TOKEN base64 value")
 
 	// Parse DB flags
-	flag.StringVar(&db_path, "db_path", "./addd.db", "location where db will be stored")
-	//flag.StringVar(&db_listen, "db_port", ":10001", "")
-	//flag.StringVar(&db_join, "db_join", "./addd.db", "")
+	flag.StringVar(&dbPath, "dbPath", "./addd.db", "location where db will be stored")
+	//flag.StringVar(&dbListen, "db_port", ":10001", "")
+	//flag.StringVar(&dbJoin, "dbJoin", "./addd.db", "")
 }
 
 func main() {
@@ -57,14 +55,14 @@ func main() {
 	flag.Parse()
 
 	// Define LogLevel
-	addd.SetLoglevel(log_level)
+	addd.SetLoglevel(logLevel)
 
 	// Extract TSIG key:secret
-	dns_name, dns_secret := ddns.ExtractTSIG(dns_tsig)
+	dnsName, dnsSecret := ddns.ExtractTSIG(dnsTsig)
 
 	// Init DB
 	kvStore, err := habolt.NewStaticStore(&habolt.Options{
-		Path: db_path,
+		Path: dbPath,
 		BoltOptions: &bolt.Options{
 			Timeout: 10 * time.Second,
 		},
@@ -80,16 +78,16 @@ func main() {
 	}
 	defer addd.CloseDB()
 
-	if err := addd.StorePid(pid_file); err != nil {
+	if err := addd.StorePid(pidFile); err != nil {
 		addd.Log.Critical("Couldn't create pid file")
 		panic(err.Error())
 	}
 
 	// Start DNS server
-	go ddns.Serve(dns_domain, dns_name, dns_secret, dns_port, dns_ips)
+	go ddns.Serve(dnsDomain, dnsName, dnsSecret, dnsPort)
 
 	// Start API server
-	go api.Serve(api_listen, api_token, strings.EqualFold(log_level, "DEBUG"))
+	go api.Serve(apiListen, apiToken, strings.EqualFold(logLevel, "DEBUG"))
 
 	// Wait SIGINT/SIGTERM
 	addd.WaitSig()

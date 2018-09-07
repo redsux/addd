@@ -30,6 +30,7 @@ func DefaultRecord() *Record {
 func NewRecordFromJSON(jso string) (rec *Record, err error) {
 	rec = DefaultRecord()
 	err = json.Unmarshal([]byte(jso), rec)
+	rec.Name = strings.TrimRight(rec.Name, ".")
 	return
 }
 
@@ -44,7 +45,7 @@ func NewRecordFromDNS(rr dns.RR) (rec *Record, err error) {
 	if _, ok := dns.IsDomainName(rname); ok {
 		if a, ok := rr.(*dns.A); ok {
 			rec = &Record{
-				Name:    rname,
+				Name:    strings.TrimRight(rname, "."),
 				Address: a.A.String(),
 				Class:   rclass,
 				Type:    rtype,

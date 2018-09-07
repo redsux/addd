@@ -68,6 +68,19 @@ func DeleteRecord(rr *Record) (err error) {
 	return
 }
 
+// IPs returns list of IPs related to our Store
+func IPs() ([]string, error) {
+	lst, err := bdb.Members()
+	if err != nil {
+		return nil, err
+	}
+	result := make([]string, 0)
+	for _, addr := range lst {
+		result = append(result, addr.Address)
+	}
+	return result, nil
+}
+
 func checkBdp() {
 	if bdb == nil {
 		err := fmt.Errorf("Internal database not define")

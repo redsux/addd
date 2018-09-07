@@ -13,24 +13,15 @@ import (
 
 var (
 	domain = "."
-	ips    []string
 	serial = 1 + rand.Intn(4294967294) // random DNS SOA serial
 )
-
-func init() {
-	if ip, e := addd.ExternalIP(); e == nil {
-		ips = []string{ip}
-	} else {
-		ips = make([]string, 0)
-	}
-}
 
 func noDotDomain() string {
 	return strings.TrimLeft(domain, ".")
 }
 
 func getSoa() *dns.SOA {
-	strSoa := fmt.Sprintf("$ORIGIN %s\n@ SOA ns.%s admin. %d 1800 900 0604800 604800", domain, noDotDomain(), serial)
+	strSoa := fmt.Sprintf("$ORIGIN %s\n@ SOA ns.%s admin. %d 3600 1800 604800 %d", domain, noDotDomain(), serial, 604800)
 	soa, err := dns.NewRR(strSoa)
 	if err != nil {
 		panic(err)
@@ -38,29 +29,56 @@ func getSoa() *dns.SOA {
 	return soa.(*dns.SOA)
 }
 
-func getNs() (ns []dns.RR) {
-	ns = make([]dns.RR, 0)
-	for i := range ips {
-		strRr := fmt.Sprintf("%s %v IN A %s", "ns."+noDotDomain(), 86400, ips[i])
-		if rr, e := dns.NewRR(strRr); e == nil {
-			ns = append(ns, rr)
-		}
+func getNS() *dns.NS {
+	strNS := fmt.Sprintf("%s %d IN NS ns.%s", domain, 604800, noDotDomain())
+	ns, err := dns.NewRR(strNS)
+	if err != nil {
+		panic(err)
 	}
-	return
+	return ns.(*dns.NS)
 }
 
-func updateRecord(r dns.RR, q *dns.Question) {
-	if rec, err := addd.NewRecordFromDNS(r); err == nil {
-		if rec.Name != "ns."+domain {
-			addd.Log.NoticeF("[DNS] Update %v, %v", rec.Name, rec.Type)
-			if _, err := addd.GetRecord(rec.Name, rec.Type); err == nil {
-				addd.DeleteRecord(rec)
-			}
-			if _, err := rec.DNSRR(); err == nil {
-				addd.StoreRecord(rec)
-			}
+func getNsA() ([]dns.RR, error) {
+	ips, err := addd.IPs()
+	if err != nil {
+		return nil, err
+	}
+	ns := make([]dns.RR, 0)
+	for _, ip := range ips {
+		strRr := fmt.Sprintf("%s %d IN A %s", "ns."+noDotDomain(), 604800, ip)
+		rr, err := dns.NewRR(strRr)
+		if err != nil {
+			return nil, err
+		}
+		ns = append(ns, rr)
+	}
+	return ns, nil
+}
+
+func updateRecord(r dns.RR, q *dns.Question) int {
+	rec, err := addd.NewRecordFromDNS(r)
+	if err != nil {
+		addd.Log.ErrorF("[DNS] record issue %v.", err)
+		return dns.RcodeServerFailure
+	}
+	addd.Log.NoticeF("[DNS] Update %v, %v", rec.Name, rec.Type)
+	if rec.Name == "ns."+domain {
+		addd.Log.Warning("[DNS] try to update NS records")
+		return dns.RcodeRefused
+	}
+	if _, err := addd.GetRecord(rec.Name, rec.Type); err == nil {
+		if err := addd.DeleteRecord(rec); err != nil {
+			addd.Log.ErrorF("[DNS] impossible to delete %v %v", rec.Name, rec.Type)
+			addd.Log.DebugF("[DNS] %v", err)
+			return dns.RcodeServerFailure
 		}
 	}
+	if err := addd.StoreRecord(rec); err != nil {
+		addd.Log.ErrorF("[DNS] impossible to store %v %v", rec.Name, rec.Type)
+		addd.Log.DebugF("[DNS] %v", err)
+		return dns.RcodeServerFailure
+	}
+	return dns.RcodeSuccess
 }
 
 func parseQuery(m *dns.Msg) {
@@ -71,37 +89,63 @@ func parseQuery(m *dns.Msg) {
 		addd.Log.NoticeF("[DNS] Query %v, %v", qname, qtype)
 
 		switch q.Qtype {
+		default:
+			m.Rcode = dns.RcodeNameError
 		case dns.TypeSOA:
 			if qname == domain {
 				m.Answer = append(m.Answer, getSoa())
-				m.Extra = append(m.Extra, getNs()...)
+				if ns, err := getNsA(); err == nil {
+					m.Extra = append(m.Extra, ns...)
+				} else {
+					m.Rcode = dns.RcodeServerFailure
+					break
+				}
+			}
+		case dns.TypeNS:
+			if qname == domain {
+				m.Answer = append(m.Answer, getNS())
+			} else {
+				m.Rcode = dns.RcodeNameError
+				break
 			}
 		case dns.TypeANY:
 			qtype = "A"
 			fallthrough
 		case dns.TypeA:
 			if qname == "ns."+domain {
-				m.Answer = append(m.Answer, getNs()...)
-				return
+				if ns, err := getNsA(); err == nil {
+					m.Answer = append(m.Answer, ns...)
+				}
+				break
 			}
 			fallthrough
 		case dns.TypeAAAA:
-			fillAnswer(qname, qtype, &m.Answer)
+			if r := fillAnswer(qname, qtype, &m.Answer); r > m.Rcode {
+				m.Rcode = r
+			}
 		}
 	}
 }
 
-func fillAnswer(qname, qtype string, ans *[]dns.RR) {
-	if readRR, e := addd.GetRecord(qname, qtype); e == nil {
-		if rr, e := readRR.DNSRR(); e == nil && rr.Header().Name == qname {
-			*ans = append(*ans, rr)
-		}
+func fillAnswer(qname, qtype string, ans *[]dns.RR) int {
+	readRR, err := addd.GetRecord(qname, qtype)
+	if err != nil {
+		return dns.RcodeNameError
 	}
+	rr, err := readRR.DNSRR()
+	if err != nil {
+		return dns.RcodeServerFailure
+	}
+	if rr.Header().Name != qname {
+		return dns.RcodeBadName
+	}
+	*ans = append(*ans, rr)
+	return dns.RcodeSuccess
 }
 
 func handleDNSRequest(w dns.ResponseWriter, r *dns.Msg) {
 	m := new(dns.Msg)
-	m.SetReply(r)
+	m.SetRcode(r, dns.RcodeSuccess)
 	m.Authoritative = true
 	m.Compress = false
 	m.Answer = make([]dns.RR, 0)
@@ -111,18 +155,19 @@ func handleDNSRequest(w dns.ResponseWriter, r *dns.Msg) {
 	switch r.Opcode {
 	case dns.OpcodeQuery:
 		parseQuery(m)
+		if len(m.Answer) == 0 {
+			m.Rcode = dns.RcodeNameError
+		}
 	case dns.OpcodeUpdate:
 		for _, question := range r.Question {
 			for _, rr := range r.Ns {
-				updateRecord(rr, &question)
+				if r := updateRecord(rr, &question); r > m.Rcode {
+					m.Rcode = r
+				}
 			}
 		}
 	default:
-		m.SetRcode(r, dns.RcodeNotImplemented)
-	}
-
-	if m.Rcode != dns.RcodeNotImplemented && len(m.Answer) == 0 {
-		m.SetRcode(r, dns.RcodeNameError)
+		m.Rcode = dns.RcodeNotImplemented
 	}
 
 	if r.IsTsig() != nil {
@@ -138,7 +183,7 @@ func handleDNSRequest(w dns.ResponseWriter, r *dns.Msg) {
 	w.WriteMsg(m)
 }
 
-func Serve(root, name, secret string, port int, extips string) {
+func Serve(root, name, secret string, port int) {
 	if !strings.HasSuffix(root, ".") {
 		root = root + "."
 	}
@@ -150,13 +195,6 @@ func Serve(root, name, secret string, port int, extips string) {
 
 	if _, ok := dns.IsDomainName(root); ok {
 		domain = root
-
-		dnsIps := strings.Split(extips, ",")
-		if len(dnsIps) > 0 {
-			ips = append(ips, dnsIps...)
-		}
-
-		addd.Log.Debugf("Ips : %v", ips)
 
 		dns.HandleFunc(root, handleDNSRequest)
 

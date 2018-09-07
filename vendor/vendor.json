@@ -3,10 +3,6 @@
 	"ignore": "test",
 	"package": [
 		{
-			"path": "StrictHostKeyChecking",
-			"revision": ""
-		},
-		{
 			"checksumSHA1": "g0MWk0s5a1r5CIYtdKdVf/TKSL4=",
 			"path": "github.com/apsdehal/go-logger",
 			"revision": "c7c5677646885d709f4b6abbd2d89e9f25d70a3a",
@@ -175,10 +171,10 @@
 			"revisionTime": "2018-07-18T01:23:57Z"
 		},
 		{
-			"checksumSHA1": "3vH6TwuVfbGVvusnRP/rv6bPKaM=",
+			"checksumSHA1": "rGOAk6nGYFvP+c0fTogv2SJvMyg=",
 			"path": "github.com/redsux/habolt",
-			"revision": "d0fbb7c866daa60c966997c92546b8959a5dfa73",
-			"revisionTime": "2018-09-06T21:12:39Z"
+			"revision": "53bc5020a0d389e0d8c00ea8a08188075f3860ea",
+			"revisionTime": "2018-09-06T22:53:30Z"
 		},
 		{
 			"checksumSHA1": "tnMZLo/kR9Kqx6GtmWwowtTLlA8=",
@@ -207,32 +203,32 @@
 		{
 			"checksumSHA1": "NjyXtXsaf0ulRJn6HQSP1FqGL4A=",
 			"path": "golang.org/x/net/bpf",
-			"revision": "8a410e7b638dca158bf9e766925842f6651ff828",
-			"revisionTime": "2018-08-25T16:15:26Z"
+			"revision": "161cd47e91fd58ac17490ef4d742dc98bb4cf60e",
+			"revisionTime": "2018-09-06T07:10:30Z"
 		},
 		{
 			"checksumSHA1": "8oJoT8rfokzpkJ19eNhRs2JgRxI=",
 			"path": "golang.org/x/net/internal/iana",
-			"revision": "8a410e7b638dca158bf9e766925842f6651ff828",
-			"revisionTime": "2018-08-25T16:15:26Z"
+			"revision": "161cd47e91fd58ac17490ef4d742dc98bb4cf60e",
+			"revisionTime": "2018-09-06T07:10:30Z"
 		},
 		{
 			"checksumSHA1": "YsXlbexuTtUXHyhSv927ILOkf6A=",
 			"path": "golang.org/x/net/internal/socket",
-			"revision": "8a410e7b638dca158bf9e766925842f6651ff828",
-			"revisionTime": "2018-08-25T16:15:26Z"
+			"revision": "161cd47e91fd58ac17490ef4d742dc98bb4cf60e",
+			"revisionTime": "2018-09-06T07:10:30Z"
 		},
 		{
 			"checksumSHA1": "K4XNY0c60IPBpv5sO6aiCuB8o/0=",
 			"path": "golang.org/x/net/ipv4",
-			"revision": "8a410e7b638dca158bf9e766925842f6651ff828",
-			"revisionTime": "2018-08-25T16:15:26Z"
+			"revision": "161cd47e91fd58ac17490ef4d742dc98bb4cf60e",
+			"revisionTime": "2018-09-06T07:10:30Z"
 		},
 		{
 			"checksumSHA1": "hDszlYGI8m9puPsEIDr59ccTiF8=",
 			"path": "golang.org/x/net/ipv6",
-			"revision": "8a410e7b638dca158bf9e766925842f6651ff828",
-			"revisionTime": "2018-08-25T16:15:26Z"
+			"revision": "161cd47e91fd58ac17490ef4d742dc98bb4cf60e",
+			"revisionTime": "2018-09-06T07:10:30Z"
 		},
 		{
 			"checksumSHA1": "WgQgD3yR96GlbII7vo0jrFUEpW4=",
@@ -251,10 +247,6 @@
 			"path": "gopkg.in/yaml.v2",
 			"revision": "5420a8b6744d3b0345ab293f6fcba19c978f1183",
 			"revisionTime": "2018-03-28T19:50:20Z"
-		},
-		{
-			"path": "no",
-			"revision": ""
 		}
 	],
 	"rootPath": "github.com/redsux/addd"
