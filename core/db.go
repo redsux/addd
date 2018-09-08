@@ -70,7 +70,7 @@ func DeleteRecord(rr *Record) (err error) {
 
 // IPs returns list of IPs related to our Store
 func IPs() ([]string, error) {
-	lst, err := bdb.Members()
+	lst, err := bdb.Addresses()
 	if err != nil {
 		return nil, err
 	}
