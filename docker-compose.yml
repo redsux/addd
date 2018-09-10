@@ -14,6 +14,10 @@ services:
         ports:
         - "53:53/udp"
         - "1632:1632/tcp"
-        command: -domain local. -level debug
+        - "10001:10001/udp"
+        - "10001:10001/tcp"
+        - "10002:10002/tcp"
+        command: -domain local.
+        #command: -domain local. -level debug -ha_bind ${HOSTIP}
         #volumes:
         #- "/path/to/db/file.db:/addd.db"

@@ -81,65 +81,48 @@ func updateRecord(r dns.RR, q *dns.Question) int {
 	return dns.RcodeSuccess
 }
 
-func parseQuery(m *dns.Msg) {
-	for _, q := range m.Question {
-		qname := strings.ToLower(q.Name)
-		qtype := dns.Type(q.Qtype).String()
+func queryRecord(q *dns.Question, m *dns.Msg) int {
+	qname := strings.ToLower(q.Name)
+	qtype := dns.Type(q.Qtype).String()
 
-		addd.Log.NoticeF("[DNS] Query %v, %v", qname, qtype)
-
-		switch q.Qtype {
-		default:
-			m.Rcode = dns.RcodeNameError
-		case dns.TypeSOA:
-			if qname == domain {
-				m.Answer = append(m.Answer, getSoa())
-				if ns, err := getNsA(); err == nil {
-					m.Extra = append(m.Extra, ns...)
-				} else {
-					m.Rcode = dns.RcodeServerFailure
-					break
-				}
-			}
-		case dns.TypeNS:
-			if qname == domain {
-				m.Answer = append(m.Answer, getNS())
-			} else {
-				m.Rcode = dns.RcodeNameError
-				break
-			}
-		case dns.TypeANY:
-			qtype = "A"
-			fallthrough
-		case dns.TypeA:
-			if qname == "ns."+domain {
-				if ns, err := getNsA(); err == nil {
-					m.Answer = append(m.Answer, ns...)
-				}
-				break
-			}
-			fallthrough
-		case dns.TypeAAAA:
-			if r := fillAnswer(qname, qtype, &m.Answer); r > m.Rcode {
-				m.Rcode = r
-			}
+	addd.Log.NoticeF("[DNS] Query %v, %v", qname, qtype)
+	switch q.Qtype {
+	case dns.TypeSOA:
+		m.Answer = append(m.Answer, getSoa())
+		if ns, err := getNsA(); err == nil {
+			m.Extra = append(m.Extra, ns...)
 		}
+	case dns.TypeNS:
+		m.Answer = append(m.Answer, getNS())
+	case dns.TypeANY:
+		qtype = "A"
+		fallthrough
+	case dns.TypeA:
+		if strings.TrimRight(qname,".") == strings.TrimRight("ns."+domain,".") {
+			if ns, err := getNsA(); err == nil {
+				m.Answer = append(m.Answer, ns...)
+			} else {
+				addd.Log.DebugF(err.Error())
+			}
+			break
+		}
+		fallthrough
+	case dns.TypeAAAA:
+		readRR, err := addd.GetRecord(qname, qtype)
+		if err != nil {
+			return dns.RcodeNameError
+		}
+		rr, err := readRR.DNSRR()
+		if err != nil {
+			return dns.RcodeServerFailure
+		}
+		if rr.Header().Name != qname {
+			return dns.RcodeBadName
+		}
+		m.Answer = append(m.Answer, rr)
+	default:
+		return dns.RcodeNotImplemented
 	}
-}
-
-func fillAnswer(qname, qtype string, ans *[]dns.RR) int {
-	readRR, err := addd.GetRecord(qname, qtype)
-	if err != nil {
-		return dns.RcodeNameError
-	}
-	rr, err := readRR.DNSRR()
-	if err != nil {
-		return dns.RcodeServerFailure
-	}
-	if rr.Header().Name != qname {
-		return dns.RcodeBadName
-	}
-	*ans = append(*ans, rr)
 	return dns.RcodeSuccess
 }
 
@@ -154,9 +137,10 @@ func handleDNSRequest(w dns.ResponseWriter, r *dns.Msg) {
 
 	switch r.Opcode {
 	case dns.OpcodeQuery:
-		parseQuery(m)
-		if len(m.Answer) == 0 {
-			m.Rcode = dns.RcodeNameError
+		for _, question := range r.Question {
+			if r := queryRecord(&question, m); r > m.Rcode {
+				m.Rcode = r
+			}
 		}
 	case dns.OpcodeUpdate:
 		for _, question := range r.Question {
@@ -169,6 +153,8 @@ func handleDNSRequest(w dns.ResponseWriter, r *dns.Msg) {
 	default:
 		m.Rcode = dns.RcodeNotImplemented
 	}
+
+	addd.Log.DebugF("[DNS] Nb Anwsers = %v\tRcode = %v",len(m.Answer), dns.RcodeToString[m.Rcode])
 
 	if r.IsTsig() != nil {
 		if w.TsigStatus() == nil {

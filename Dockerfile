@@ -11,5 +11,5 @@ RUN go get -u github.com/kardianos/govendor \
 
 FROM scratch
 COPY --from=builder /go/bin/addd /addd
-EXPOSE 53/udp 1632/tcp
+EXPOSE 53/udp 1632/tcp 10001/udp 10001/tcp 10002/tcp
 ENTRYPOINT ["/addd"]

@@ -153,10 +153,10 @@
 			"revisionTime": "2018-08-30T10:17:45Z"
 		},
 		{
-			"checksumSHA1": "QKPYBt8x1OP9RV7knJHu6cSQjlQ=",
+			"checksumSHA1": "qNUdntc92449ZK1SHXghkzVa1y0=",
 			"path": "github.com/miekg/dns",
-			"revision": "9a34f54f7a0fff45ef7272ab019a25cc0b0aefbd",
-			"revisionTime": "2018-08-30T06:41:33Z"
+			"revision": "8f0a42efa0fb25af5fa2d972fb6dad63eb5e0538",
+			"revisionTime": "2018-09-09T19:47:16Z"
 		},
 		{
 			"checksumSHA1": "ZTcgWKWHsrX0RXYVXn5Xeb8Q0go=",
@@ -171,10 +171,10 @@
 			"revisionTime": "2018-07-18T01:23:57Z"
 		},
 		{
-			"checksumSHA1": "ZYUbMVkCU/LU4MCz8A6MBsctGKk=",
+			"checksumSHA1": "qMIFvrCx4f6e8gA13TrqsQN5ai8=",
 			"path": "github.com/redsux/habolt",
-			"revision": "2cd33e6f8d1b4c377ad547b3a2ee37967f634c04",
-			"revisionTime": "2018-09-08T10:10:22Z"
+			"revision": "b3ef7ecdeef797861b70341f833fdf4108a52a54",
+			"revisionTime": "2018-09-10T15:05:40Z"
 		},
 		{
 			"checksumSHA1": "tnMZLo/kR9Kqx6GtmWwowtTLlA8=",
@@ -233,8 +233,8 @@
 		{
 			"checksumSHA1": "GKC8IFNbSdF5HKJVx+Cm/3ASlH8=",
 			"path": "golang.org/x/sys/unix",
-			"revision": "917fdcba135dcbaccd57425db91723541b4427c8",
-			"revisionTime": "2018-09-07T20:16:59Z"
+			"revision": "d0be0721c37eeb5299f245a996a483160fc36940",
+			"revisionTime": "2018-09-09T03:34:56Z"
 		},
 		{
 			"checksumSHA1": "P/k5ZGf0lEBgpKgkwy++F7K1PSg=",

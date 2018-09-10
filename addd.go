@@ -25,9 +25,12 @@ var (
 	apiListen string
 	apiToken  string
 	// db flags
-	dbPath   string
-	dbListen string
-	dbJoin   string
+	dbPath string
+	// ha flags
+	isHa     bool
+	haListen string
+	haBind   string
+	haJoin   string
 )
 
 func init() {
@@ -36,7 +39,7 @@ func init() {
 	flag.StringVar(&pidFile, "pid", "./addd.pid", "pid file location")
 
 	// Parse DNS flags
-	flag.StringVar(&dnsDomain, "domain", ".", "Parent domain to serve.")
+	flag.StringVar(&dnsDomain, "domain", "local.", "Parent domain to serve.")
 	flag.IntVar(&dnsPort, "port", 53, "server port")
 	flag.StringVar(&dnsTsig, "tsig", "", "use MD5 hmac tsig: keyname:base64")
 
@@ -45,12 +48,22 @@ func init() {
 	flag.StringVar(&apiToken, "token", "secret", "RestAPI X-AUTH-TOKEN base64 value")
 
 	// Parse DB flags
-	flag.StringVar(&dbPath, "dbPath", "./addd.db", "location where db will be stored")
-	//flag.StringVar(&dbListen, "db_port", ":10001", "")
-	//flag.StringVar(&dbJoin, "dbJoin", "./addd.db", "")
+	flag.StringVar(&dbPath, "db_path", "./addd.db", "location where db will be stored")
+
+	// HA flags
+	flag.BoolVar(&isHa, "ha", false, "Start addd in a HA mode")
+	flag.StringVar(&haListen, "ha_listen", ":10001", "Listen to [IP]:PORT (use also PORT+1 for RAFT)")
+	flag.StringVar(&haBind, "ha_bind", "", "Bind to a specific [IP]:PORT (for NAT Traversal)")
+	flag.StringVar(&haJoin, "ha_join", "", "Members addresses 'host:port' split by a comma ','")
 }
 
 func main() {
+	var (
+		output *habolt.HaOutput
+		kvStore habolt.Store
+		err error
+	)
+
 	// Parse arguments
 	flag.Parse()
 
@@ -60,25 +73,49 @@ func main() {
 	// Extract TSIG key:secret
 	dnsName, dnsSecret := ddns.ExtractTSIG(dnsTsig)
 
-	// Init DB
-	kvStore, err := habolt.NewStaticStore(&habolt.Options{
+	output, err = habolt.NewOutputStr(logLevel)
+	if err != nil {
+		addd.Log.WarningF("Couldn't create LogOutput with %v", logLevel)
+	}
+	dbOpts := &habolt.Options{
 		Path: dbPath,
+		LogOutput: output,
 		BoltOptions: &bolt.Options{
 			Timeout: 10 * time.Second,
 		},
-	})
-	if err != nil {
-		addd.Log.Critical("Couldn't create our KV store")
-		panic(err.Error())
 	}
 
-	// Open db
-	if err := addd.NewDB(kvStore); err != nil {
+	lAddr, _ := habolt.NewListen(haListen)
+	bAddr, _ := habolt.NewListen(haBind)
+
+	// Init DB
+	if isHa {
+		if kvStore, err = habolt.NewHaStore(lAddr, bAddr, dbOpts); err != nil {
+			addd.Log.Critical("Couldn't create our KV store")
+			panic(err.Error())
+		}
+		var peers []string
+		if haJoin != "" {
+			peers = strings.Split(haJoin, ",")
+		}
+		go kvStore.(*habolt.HaStore).Start(peers...)
+	} else {
+		if kvStore, err = habolt.NewStaticStore(dbOpts); err != nil {
+			addd.Log.Critical("Couldn't create our KV store")
+			panic(err.Error())
+		}
+		if bAddr != nil {
+			kvStore.(*habolt.StaticStore).BindTo(bAddr)
+		}
+	}
+
+	// Link DNS to DNS & API
+	if err = addd.NewDB(kvStore); err != nil {
 		panic(err.Error())
 	}
 	defer addd.CloseDB()
 
-	if err := addd.StorePid(pidFile); err != nil {
+	if err = addd.StorePid(pidFile); err != nil {
 		addd.Log.Critical("Couldn't create pid file")
 		panic(err.Error())
 	}
