@@ -65,8 +65,8 @@
 		{
 			"checksumSHA1": "CbzNfOvaT1G3G9WILmsyjYfYTO0=",
 			"path": "github.com/golang/protobuf/proto",
-			"revision": "b27b920f9e71b439b873b17bf99f56467623814a",
-			"revisionTime": "2018-08-21T05:17:52Z"
+			"revision": "e344474228f55cc8e5f2342b0493b71bcdd258f4",
+			"revisionTime": "2018-09-10T22:49:16Z"
 		},
 		{
 			"checksumSHA1": "ByRdQMv2yl16W6Tp9gUW1nNmpuI=",
@@ -153,10 +153,10 @@
 			"revisionTime": "2018-08-30T10:17:45Z"
 		},
 		{
-			"checksumSHA1": "qNUdntc92449ZK1SHXghkzVa1y0=",
+			"checksumSHA1": "vyMhzqTgA2cWDFlBt4UFPPR0JQo=",
 			"path": "github.com/miekg/dns",
-			"revision": "8f0a42efa0fb25af5fa2d972fb6dad63eb5e0538",
-			"revisionTime": "2018-09-09T19:47:16Z"
+			"revision": "e875a31a5cfbcd646131e625f24818cbae228913",
+			"revisionTime": "2018-09-10T10:42:54Z"
 		},
 		{
 			"checksumSHA1": "ZTcgWKWHsrX0RXYVXn5Xeb8Q0go=",
@@ -171,10 +171,10 @@
 			"revisionTime": "2018-07-18T01:23:57Z"
 		},
 		{
-			"checksumSHA1": "N0NzQpDbJFs+ClfwKo5rsHOWxUU=",
+			"checksumSHA1": "XuOQbTrGnGgm5D/8p62IlwJmsaY=",
 			"path": "github.com/redsux/habolt",
-			"revision": "bf92bf3fbcc6493e02167ea08cdd32ade5c23e83",
-			"revisionTime": "2018-09-10T15:52:06Z"
+			"revision": "e8f4e10e921bf77e3610b0f6ad83ac3ba09bbe0a",
+			"revisionTime": "2018-09-11T12:34:29Z"
 		},
 		{
 			"checksumSHA1": "tnMZLo/kR9Kqx6GtmWwowtTLlA8=",
@@ -191,14 +191,14 @@
 		{
 			"checksumSHA1": "2LpxYGSf068307b7bhAuVjvzLLc=",
 			"path": "golang.org/x/crypto/ed25519",
-			"revision": "0709b304e793a5edb4a2c0145f281ecdc20838a4",
-			"revisionTime": "2018-08-31T22:38:59Z"
+			"revision": "0e37d006457bf46f9e6692014ba72ef82c33022c",
+			"revisionTime": "2018-06-14T19:19:50Z"
 		},
 		{
 			"checksumSHA1": "0JTAFXPkankmWcZGQJGScLDiaN8=",
 			"path": "golang.org/x/crypto/ed25519/internal/edwards25519",
-			"revision": "0709b304e793a5edb4a2c0145f281ecdc20838a4",
-			"revisionTime": "2018-08-31T22:38:59Z"
+			"revision": "0e37d006457bf46f9e6692014ba72ef82c33022c",
+			"revisionTime": "2018-06-14T19:19:50Z"
 		},
 		{
 			"checksumSHA1": "NjyXtXsaf0ulRJn6HQSP1FqGL4A=",
@@ -238,15 +238,21 @@
 		},
 		{
 			"checksumSHA1": "P/k5ZGf0lEBgpKgkwy++F7K1PSg=",
+			"origin": "github.com/go-playground/validator",
 			"path": "gopkg.in/go-playground/validator.v8",
 			"revision": "5f1438d3fca68893a817e4a66806cea46a9e4ebf",
-			"revisionTime": "2017-07-30T05:02:35Z"
+			"revisionTime": "2017-07-30T05:02:35Z",
+			"version": "=v8",
+			"versionExact": "v8"
 		},
 		{
 			"checksumSHA1": "ZSWoOPUNRr5+3dhkLK3C4cZAQPk=",
+			"origin": "github.com/go-yaml/yaml",
 			"path": "gopkg.in/yaml.v2",
 			"revision": "5420a8b6744d3b0345ab293f6fcba19c978f1183",
-			"revisionTime": "2018-03-28T19:50:20Z"
+			"revisionTime": "2018-03-28T19:50:20Z",
+			"version": "=v2",
+			"versionExact": "v2"
 		}
 	],
 	"rootPath": "github.com/redsux/addd"

@@ -56,27 +56,45 @@ func getNsA() ([]dns.RR, error) {
 }
 
 func updateRecord(r dns.RR, q *dns.Question) int {
-	rec, err := addd.NewRecordFromDNS(r)
-	if err != nil {
-		addd.Log.ErrorF("[DNS] record issue %v.", err)
-		return dns.RcodeServerFailure
-	}
-	addd.Log.NoticeF("[DNS] Update %v, %v", rec.Name, rec.Type)
-	if rec.Name == "ns."+domain {
+	header := r.Header()
+    rname := header.Name
+    rtype := dns.Type(header.Rrtype).String()
+
+	addd.Log.NoticeF("[DNS] Update %v, %v", rname, rtype)
+	if strings.TrimLeft(rname, ".") == strings.Trim("ns."+ domain, ".")  {
 		addd.Log.Warning("[DNS] try to update NS records")
 		return dns.RcodeRefused
 	}
-	if _, err := addd.GetRecord(rec.Name, rec.Type); err == nil {
-		if err := addd.DeleteRecord(rec); err != nil {
-			addd.Log.ErrorF("[DNS] impossible to delete %v %v", rec.Name, rec.Type)
+
+	// If "update delete" (cf. https://godoc.org/github.com/miekg/dns#hdr-DYNAMIC_UPDATES )
+	// 	3.4.2.6 - Table Of Metavalues Used In Update Section
+	//  	CLASS    TYPE     RDATA    Meaning                     Function
+	// 		---------------------------------------------------------------
+	//  	ANY      ANY      empty    Delete all RRsets from name dns.RemoveName
+	//  	ANY      rrset    empty    Delete an RRset             dns.RemoveRRset
+	//  	NONE     rrset    rr       Delete an RR from RRset     dns.Remove
+	//  	zone     rrset    rr       Add to an RRset             dns.Insert
+	if header.Class == dns.ClassNONE || (header.Class == dns.ClassANY && header.Rdlength == 0) {
+		if rec, err := addd.GetRecord(rname, rtype); err == nil {
+			if err := addd.DeleteRecord(rec); err != nil {
+				addd.Log.ErrorF("[DNS] impossible to delete %v %v", rec.Name, rec.Type)
+				addd.Log.DebugF("[DNS] %v", err)
+				return dns.RcodeServerFailure
+			}
+		} else {
+			return dns.RcodeNameError
+		}
+	} else { // "update add"
+		rec, err := addd.NewRecordFromDNS(r)
+		if err != nil {
+			addd.Log.ErrorF("[DNS] Record creation impossible :  %v.", err)
+			return dns.RcodeServerFailure
+		}
+		if err := addd.StoreRecord(rec); err != nil {
+			addd.Log.ErrorF("[DNS] Impossible to store %v %v", rec.Name, rec.Type)
 			addd.Log.DebugF("[DNS] %v", err)
 			return dns.RcodeServerFailure
 		}
-	}
-	if err := addd.StoreRecord(rec); err != nil {
-		addd.Log.ErrorF("[DNS] impossible to store %v %v", rec.Name, rec.Type)
-		addd.Log.DebugF("[DNS] %v", err)
-		return dns.RcodeServerFailure
 	}
 	return dns.RcodeSuccess
 }
@@ -156,6 +174,10 @@ func handleDNSRequest(w dns.ResponseWriter, r *dns.Msg) {
 
 	addd.Log.DebugF("[DNS] Nb Anwsers = %v\tRcode = %v",len(m.Answer), dns.RcodeToString[m.Rcode])
 
+	if len(m.Answer) > 0 && m.Rcode != dns.RcodeSuccess {
+		m.Rcode = dns.RcodeSuccess
+	}
+ 
 	if r.IsTsig() != nil {
 		if w.TsigStatus() == nil {
 			if rtsig, ok := r.Extra[len(r.Extra)-1].(*dns.TSIG); ok {

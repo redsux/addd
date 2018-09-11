@@ -19,5 +19,6 @@ services:
         - "10002:10002/tcp"
         command: -domain local.
         #command: -domain local. -level debug -ha_bind ${HOSTIP}
+        #command: -domain local. -level debug -ha -ha_bind ${HOSTIP}:10001
         #volumes:
         #- "/path/to/db/file.db:/addd.db"

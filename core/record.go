@@ -35,37 +35,43 @@ func NewRecordFromJSON(jso string) (rec *Record, err error) {
 }
 
 // NewRecordFromDNS create a new Record from a dns.RR object
-func NewRecordFromDNS(rr dns.RR) (rec *Record, err error) {
+func NewRecordFromDNS(rr dns.RR) (*Record, error) {
 	var (
 		rname  = strings.ToLower(rr.Header().Name)
 		rclass = dns.Class(rr.Header().Class).String()
 		rtype  = dns.Type(rr.Header().Rrtype).String()
 		rTTL   = int(rr.Header().Ttl)
 	)
-	if _, ok := dns.IsDomainName(rname); ok {
-		if a, ok := rr.(*dns.A); ok {
-			rec = &Record{
-				Name:    strings.TrimRight(rname, "."),
-				Address: a.A.String(),
-				Class:   rclass,
-				Type:    rtype,
-				TTL:     rTTL,
-			}
-		} else if a, ok := rr.(*dns.AAAA); ok {
-			rec = &Record{
-				Name:    rname,
-				Address: a.AAAA.String(),
-				Class:   rclass,
-				Type:    rtype,
-				TTL:     rTTL,
-			}
-		} else {
-			err = fmt.Errorf("Record %v with type %v not supported", rname, rtype)
-		}
-	} else {
-		err = fmt.Errorf("Record %v has not a valid domain", rname)
+	rec := &Record{
+		Name:    strings.TrimRight(rname, "."),
+		Class:   rclass,
+		Type:    rtype,
+		TTL:     rTTL,
 	}
-	return
+	if _, ok := dns.IsDomainName(rname); ok {
+		var ipAddr string
+		var v6 bool
+		switch a := rr.(type) {
+		case *dns.A:
+			ipAddr = a.A.String()
+			v6 = false
+		case *dns.AAAA:
+			ipAddr = a.AAAA.String()
+			v6 = true
+		default:
+			err := fmt.Errorf("Record %v with type %v not supported", rname, rtype)
+			return nil, err
+		}
+		if err := IsValidIp(ipAddr, v6); err != nil {
+			err := fmt.Errorf("Record %v has invalid ip address %s", rname, ipAddr)
+			return nil, err
+		}
+		rec.Address = ipAddr
+	} else {
+		err := fmt.Errorf("Record %v has not a valid domain", rname)
+		return nil, err
+	}
+	return rec, nil
 }
 
 func (r Record) String() string {

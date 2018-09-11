@@ -2,12 +2,11 @@ package addd
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
-
-	"github.com/hashicorp/go-sockaddr"
 )
 
 var (
@@ -47,7 +46,16 @@ func WaitSig() {
 	Log.WarningF("Signal (%d) received, stopping", s)
 }
 
-// ExternalIP deprecated
-func ExternalIP() (string, error) {
-	return sockaddr.GetInterfaceIP("eth0")
+// IsValidIp return an error if the ip address is invalid
+func IsValidIp(ipAddr string, v6 bool) error {
+	err := fmt.Errorf("Invalid ip address %s", ipAddr)
+	ip := net.ParseIP( ipAddr )
+	if ip == nil {
+		return err
+	}
+	v4 := ip.To4() != nil
+	if v6 == v4 { // v6 xor v4
+		return err
+	}
+	return nil
 }
