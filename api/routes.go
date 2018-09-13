@@ -8,8 +8,9 @@ import (
 	"github.com/redsux/addd/core"
 )
 
-func registerRoutes(srv *gin.Engine) {
-	records := srv.Group("/records")
+func registerRoutes(apigroup *gin.RouterGroup) {
+	apigroup.Use(authRequired())
+	records := apigroup.Group("/records")
 	{
 		forAll(records)
 		record := records.Group("/:name")
@@ -22,8 +23,9 @@ func registerRoutes(srv *gin.Engine) {
 			}
 		}
 	}
-	members := srv.Group("/members")
+	members := apigroup.Group("/members")
 	{
+		members.Use(authRequired())
 		members.GET("", getMembers)
 		members.GET("/", getMembers)
 	}

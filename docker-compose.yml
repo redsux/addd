@@ -1,4 +1,4 @@
-version: '3'
+version: "3.5"
 
 services:
     addd:
@@ -17,8 +17,12 @@ services:
         - "10001:10001/udp"
         - "10001:10001/tcp"
         - "10002:10002/tcp"
-        command: -domain local.
+        command: -domain local. -ui
         #command: -domain local. -level debug -ha_bind ${HOSTIP}
         #command: -domain local. -level debug -ha -ha_bind ${HOSTIP}:10001
         #volumes:
         #- "/path/to/db/file.db:/addd.db"
+
+networks:
+    default:
+        name: addd_net

@@ -23,17 +23,17 @@ func init() {
 	engine.Use(logger())
 	engine.Use(gin.Recovery())
 	engine.Use(cors.Default())
-	engine.Use(authRequired())
 }
 
 // Serve start the HTTP server
-func Serve(listen, auth string, debug ...bool) {
+func Serve(listen, auth, uipath string, debug ...bool) {
 	if len(debug) > 0 {
 		if debug[0] {
 			gin.SetMode(gin.DebugMode)
 		}
 	}
-	registerRoutes(engine)
+	registerStatic(uipath, engine.Group("/ui"))
+	registerRoutes(engine.Group("/"))
 
 	if err := engine.Run(listen); err != nil {
 		addd.Log.Error("Failed to run the rest api server.")

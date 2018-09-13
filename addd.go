@@ -31,6 +31,8 @@ var (
 	haListen string
 	haBind   string
 	haJoin   string
+	// ui flags
+	useUI bool
 )
 
 func init() {
@@ -55,17 +57,26 @@ func init() {
 	flag.StringVar(&haListen, "ha_listen", ":10001", "Listen to [IP]:PORT (use also PORT+1 for RAFT)")
 	flag.StringVar(&haBind, "ha_bind", "", "Bind to a specific [IP]:PORT (for NAT Traversal)")
 	flag.StringVar(&haJoin, "ha_join", "", "Members addresses 'host:port' split by a comma ','")
+
+	// UI flags
+	flag.BoolVar(&useUI, "ui", false, "Activate the UI")
 }
 
 func main() {
 	var (
-		output *habolt.HaOutput
+		output  *habolt.HaOutput
 		kvStore habolt.Store
-		err error
+		err     error
 	)
 
 	// Parse arguments
 	flag.Parse()
+
+	// Defin UI
+	uiPath := ""
+	if useUI {
+		uiPath = "/ui"
+	}
 
 	// Define LogLevel
 	addd.SetLoglevel(logLevel)
@@ -78,7 +89,7 @@ func main() {
 		addd.Log.WarningF("Couldn't create LogOutput with %v", logLevel)
 	}
 	dbOpts := &habolt.Options{
-		Path: dbPath,
+		Path:      dbPath,
 		LogOutput: output,
 		BoltOptions: &bolt.Options{
 			Timeout: 10 * time.Second,
@@ -132,7 +143,7 @@ func main() {
 	go ddns.Serve(dnsDomain, dnsName, dnsSecret, dnsPort)
 
 	// Start API server
-	go api.Serve(apiListen, apiToken, strings.EqualFold(logLevel, "DEBUG"))
+	go api.Serve(apiListen, apiToken, uiPath, strings.EqualFold(logLevel, "DEBUG"))
 
 	// Wait SIGINT/SIGTERM
 	addd.WaitSig()

@@ -1,3 +1,11 @@
-# vendor
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+
+# Vendors
 vendor/*
 !vendor/vendor.json
