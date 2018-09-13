@@ -26,6 +26,7 @@ func init() {
 	engine.Use(authRequired())
 }
 
+// Serve start the HTTP server
 func Serve(listen, auth string, debug ...bool) {
 	if len(debug) > 0 {
 		if debug[0] {

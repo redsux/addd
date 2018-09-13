@@ -22,6 +22,23 @@ func registerRoutes(srv *gin.Engine) {
 			}
 		}
 	}
+	members := srv.Group("/members")
+	{
+		members.GET("", getMembers)
+		members.GET("/", getMembers)
+	}
+}
+
+func getMembers(c *gin.Context) {
+	lst, err := addd.IPs()
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		addd.Log.DebugF("[API] %v", err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"members": lst,
+	})
 }
 
 func forAll(router *gin.RouterGroup) {
