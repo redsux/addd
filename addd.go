@@ -85,28 +85,36 @@ func main() {
 		},
 	}
 
-	lAddr, _ := habolt.NewListen(haListen)
+	lAddr, _ := habolt.NewListen(haListen, true)
 	bAddr, _ := habolt.NewListen(haBind)
 
 	// Init DB
 	if isHa {
-		if kvStore, err = habolt.NewHaStore(lAddr, bAddr, dbOpts); err != nil {
+		var haStore *habolt.HaStore
+		if haStore, err = habolt.NewHaStore(lAddr, bAddr, dbOpts); err != nil {
 			addd.Log.Critical("Couldn't create our KV store")
 			panic(err.Error())
 		}
 		var peers []string
 		if haJoin != "" {
-			peers = strings.Split(haJoin, ",")
+			for _, peer := range strings.Split(haJoin, ",") {
+				if tmpAddr, err := habolt.NewListen(peer); err == nil {
+					peers = append(peers, tmpAddr.String())
+				}
+			}
 		}
-		go kvStore.(*habolt.HaStore).Start(peers...)
+		go haStore.Start(peers...)
+		kvStore = haStore
 	} else {
-		if kvStore, err = habolt.NewStaticStore(dbOpts); err != nil {
+		var stStore *habolt.StaticStore
+		if stStore, err = habolt.NewStaticStore(dbOpts); err != nil {
 			addd.Log.Critical("Couldn't create our KV store")
 			panic(err.Error())
 		}
 		if bAddr != nil {
-			kvStore.(*habolt.StaticStore).BindTo(bAddr)
+			stStore.BindTo(bAddr)
 		}
+		kvStore = stStore
 	}
 
 	// Link DNS to DNS & API
