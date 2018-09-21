@@ -1,0 +1,40 @@
+version: 2
+jobs:
+  build:
+    working_directory: /go/src/github.com/redsux/addd
+    docker:
+      - image: circleci/golang:1.10
+        environment:
+          CGO_ENABLED: 0
+          GOOS: linux
+    steps:
+      - checkout
+      - run:
+          name: "Dependencies"
+          command: |
+            go get -u github.com/kardianos/govendor
+            govendor sync
+      - run:
+          name: "Build"
+          command: govendor install -a -ldflags '-extldflags "-static"' +local
+      - persist_to_workspace:
+          root: /go/bin
+          paths:
+            - addd
+  release:
+    docker:
+      - image: cibuilds/github:0.12
+    steps:
+      - attach_workspace:
+          at: /go/bin
+      - run:
+          command: ghr -t ${ghtoken} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete latest /go/bin
+workflows:
+  version: 2
+  build_and_release:
+    jobs:
+      - build
+      - release:
+          context: github
+          requires:
+            - build
